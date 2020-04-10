@@ -168,7 +168,7 @@ def fenCacheThread(fenCacheThreadInfo) :
 class PopularityTab :
     def __init__(self,chessBoard,configFile) :
         self.popularityTab = sg.TabGroup([[sg.Tab('Popularity',[[sg.Text('Last move popularity: '),sg.Text('           ',key='_current_popularity_',justification='left')],
-                                          [sg.RButton('Show Popular moves', disabled=True, key='_popularity_', size=[20,None]), sg.RButton('Make Move', key='_make_popularity_move_',disabled=True)],
+                                          [sg.RButton('Show Popular Moves', disabled=True, key='_popularity_', size=[20,None]), sg.RButton('Make Move', key='_make_popularity_move_',disabled=True)],
                                           [sg.Table([['','','','','']],headings=['#','Move','#Games','Depth', 'Eval'], key='_popularity_table_', justification='center',auto_size_columns=False,col_widths=[3,8,9,5,4],num_rows=10)]])]])
 
         self.gamesTab = sg.TabGroup([[sg.Tab('Games',[[sg.Text('')],
