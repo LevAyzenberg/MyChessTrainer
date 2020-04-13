@@ -137,7 +137,8 @@ def lastMoveCacheReady(window,move,fen) :
             print('fenCacheThread: Still no window')
             
     except:
-        print('fenCacheThread: unable to update popularity!!!')
+        pass
+        #print('fenCacheThread: unable to update popularity!!!')
 
 ## Thread fills fen cache in backgoround
 def fenCacheThread(fenCacheThreadInfo) :
@@ -200,7 +201,8 @@ class PopularityTab :
             window.FindElement('_goto_game_').Update(disabled=True)
             window.FindElement('_current_popularity_').Update(value='')
         except:
-            print('Unable to update buttons!!!')
+            pass
+            #print('Unable to update buttons!!!')
  
     # On new board disable buttons.
     def setBoard(self,chessBoard,window) :

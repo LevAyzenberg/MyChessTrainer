@@ -1,7 +1,9 @@
 import configparser
 import chess
 import PySimpleGUI as sg
+import threading
 import os
+import copy
 
 class ChessBoardUI :
     def __init__(self,configFile) :
@@ -50,48 +52,95 @@ class ChessBoardUI :
             [[None,None],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None]],
             [[None,None],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None],[None,None]]
         ]
+
         self.chess_board_square1=None
         self.flipped=False
+        self.timeStamp=0
+        self.drawnTimestamp=0
+        self.lastBoardToRedraw=None
+        self.window=None
+        self.lock = threading.Lock()
+        self.semaphore=threading.Semaphore(value=0)
+        self.threadObject=None
+        self.stopThread=False
 
-        
-
-    ## Renders entire board
     def redrawBoard(self, window, chessBoard):
-        board=self.chessBoardToUI(chessBoard)
-        for i in range(8):
-            for j in range(8):
-                color = '#B58863' if (i+j) % 2 else '#F0D9B5'
-                
-                piece_image = self.images[tuple(board[i][j])]
-                elem = window.FindElement(key=(i,j))
-                elem.Update(button_color = ('white', color), image_filename=piece_image)
-                
-                if (self.chess_board_square1 != None) and (self.fromGuiToChess([i,j])== self.chess_board_square1) :
-                    elem.Widget.config(relief='sunken')
-                else:
-                    elem.Widget.config(relief='raised')
+        if self.threadObject == None:
+            self.threadObject=threading.Thread(target=self.redrawBoardThread, args=[])
+            self.threadObject.start()
 
-    ## Transfers UI coordinates to chess notation            
-    def fromGuiToChess(self,coord) :
-        if self.flipped:
+        with self.lock:
+            self.window=window
+            self.timeStamp=self.timeStamp+1
+            self.lastBoardToRedraw=copy.deepcopy(chessBoard)
+        self.semaphore.release()
+
+    def redrawBoardThread(self):
+        while True:
+            self.semaphore.acquire()
+            with self.lock:
+                chessBoard=self.lastBoardToRedraw
+                window=self.window
+                timeStamp=self.timeStamp
+                drawnTimestamp=self.drawnTimestamp
+                chess_board_square1=self.chess_board_square1
+                flipped = self.flipped
+                stopThread=self.stopThread
+
+            if stopThread:
+                break
+
+            # We drawed last board
+            if drawnTimestamp == timeStamp:
+                continue
+
+            ## Render board
+            board = self.chessBoardToUI(chessBoard,flipped)
+            for i in range(8):
+                for j in range(8):
+                    color = '#B58863' if (i + j) % 2 else '#F0D9B5'
+
+                    piece_image = self.images[tuple(board[i][j])]
+                    elem = window.FindElement(key=(i, j))
+                    elem.Update(button_color=('white', color), image_filename=piece_image)
+
+                    if (chess_board_square1 != None) and (self.fromGuiToChess([i, j]) == chess_board_square1):
+                        elem.Widget.config(relief='sunken')
+                    else:
+                        elem.Widget.config(relief='raised')
+
+            with self.lock:
+                self.drawnTimestamp=timeStamp
+
+        print('UI thread stoped')
+
+    ## Stops UI thread
+    def stopUI(self):
+        with self.lock:
+            self.stopThread=True
+        self.semaphore.release()
+
+    ## Transfers UI coordinates to chess notation
+    def fromGuiToChess(self,coord,flipped) :
+        if flipped:
             return coord[0]*8+7-coord[1]
         else :
             return (7-coord[0])*8 + coord[1]
 
     ## Transfers chess notation to UI coordinates
-    def fromChessToGui(self, square) :
+    def fromChessToGui(self, square,flipped) :
         coord=[int((chess.H8-square)/8),square%8]
-        if self.flipped:
+        if flipped:
             return [7-coord[0],7-coord[1]]
         else :
             return coord
         
 
     ## Transfer board to UI view
-    def chessBoardToUI(self,chessBoard) :
+    def chessBoardToUI(self,chessBoard,flipped) :
         uiBoard=self.empty_board
         for i in range(chess.A1, chess.H8+1) :
-            uiCoord=self.fromChessToGui(i)
+            uiCoord=self.fromChessToGui(i,flipped)
             uiBoard[uiCoord[0]][uiCoord[1]]=[chessBoard.piece_type_at(i),chessBoard.color_at(i)]
         return uiBoard
 
@@ -106,7 +155,7 @@ class ChessBoardUI :
 
     ## creates initial board Tab
     def createBoardTab(self,chessBoard) :
-        initial_board =self.chessBoardToUI(chessBoard)
+        initial_board =self.chessBoardToUI(chessBoard,False)
     
         # the main board display layout
         board_layout = [[sg.T('      ')] + [sg.T('{}'.format(a), pad=((4,27),0), font='Any 13',key='_upper_letters_'+str(ord(a)-ord('a'))) for a in 'abcdefgh']]
@@ -124,14 +173,14 @@ class ChessBoardUI :
 
     def onEvent(self, window, button, value, chessBoard) :
         if button == 'Flip':
-            self.flipped= not(self.flipped)
-            if self.flipped :
-                lettersRange='hgfedcba'
-                numbersRange='12345678'
-            else:
-                lettersRange='abcdefgh'
-                numbersRange='87654321'
-
+            with self.lock:
+                self.flipped= not(self.flipped)
+                if self.flipped :
+                    lettersRange='hgfedcba'
+                    numbersRange='12345678'
+                else:
+                    lettersRange='abcdefgh'
+                    numbersRange='87654321'
             for i in range(0,8) :
                 window.FindElement('_upper_letters_'+str(i)).Update(lettersRange[i])
                 window.FindElement('_lower_letters_'+str(i)).Update(lettersRange[i])
@@ -139,17 +188,19 @@ class ChessBoardUI :
                 window.FindElement('right_number'+str(i)).Update(numbersRange[i]+'  ')
             
         if type(button) is tuple :
-            if self.chess_board_square1 == None:
-                self.chess_board_square1=self.fromGuiToChess(button);
-                if chessBoard.piece_at(self.chess_board_square1) == None :
-                    self.chess_board_square1 = None
-            else:
-                chess_board_square2=self.fromGuiToChess(button)
-                move=chess.Move(self.chess_board_square1,chess_board_square2);
-                self.chess_board_square1=None
-                return move
+            with self.lock:
+                if self.chess_board_square1 == None:
+                    self.chess_board_square1=self.fromGuiToChess(button,self.flipped)
+                    if chessBoard.piece_at(self.chess_board_square1) == None :
+                        self.chess_board_square1 = None
+                else:
+                    chess_board_square2=self.fromGuiToChess(button,self.flipped)
+                    move=chess.Move(self.chess_board_square1,chess_board_square2)
+                    self.chess_board_square1=None
+                    return move
         return None
 
     def clearSquare(self) :
-        self.chess_board_square1 = None
+        with self.lock:
+            self.chess_board_square1 = None
         

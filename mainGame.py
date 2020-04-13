@@ -1,9 +1,8 @@
 import PySimpleGUI as sg
-import os
 import chess
-import threading
 import listboxPopup
 import winsound
+#import cProfile
 
 from engineTab import EngineTab
 from popularityTab import PopularityTab
@@ -79,8 +78,11 @@ def playGame():
     notationTab.onWindowFinalize(window)
     # ---===--- Loop taking in user input --- #
     i = 0
+
     while True:
         button, value = window.Read()
+        #prof=cProfile.Profile()
+        #prof.enable()
         #window.FindElement('_error_message_').Update(value='')
 
         if button == 'Exit':
@@ -94,7 +96,7 @@ def playGame():
 
 
         if button == 'New':
-            notationTab.newBoard(window)
+            notationTab.newGame(window)
             chess_board=notationTab.getBoard()
             engineTab.setBoard(chess_board,window)
             popularityTab.setBoard(chess_board,window)
@@ -141,9 +143,12 @@ def playGame():
     
         # redraw board and notation
         chessBoardUI.redrawBoard(window, chess_board)
-
+        #prof.disable()
+        #prof.dump_stats("readLoop_profile")
     engineTab.close()
     popularityTab.close()
+    chessBoardUI.stopUI()
+    notationTab.stop()
 
     print("EXIT\n")
    
