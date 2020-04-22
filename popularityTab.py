@@ -245,12 +245,12 @@ class PopularityTab :
             if len(window_values['_games_table_']) > 0:
                 index = window_values['_games_table_'][0]
                 href=cacheElement['games'][1][index]
-                print(href)
+                return fenCache.getPgn(href)
             #else :
             #    window.FindElement('_error_message_').Update(value='Choose game')
         else :
             print('onCopyToNotation: Cache for fen=', chessBoard.fen(), ' is not present')
-
+        return None
 
 
     # on show popularity button
@@ -285,6 +285,7 @@ class PopularityTab :
     # on window event
     def onEvent(self,window, button, value, chessBoard) :
         move=None
+        pgn=None
 
         if button == '_show_games_' :
             self.onShowGames(window,chessBoard)
@@ -296,11 +297,11 @@ class PopularityTab :
             self.onPopularity(window,chessBoard)
 
         if button == '_copy_to_notation_':
-            self.onCopyToNotation(window, value,chessBoard)
+            pgn=self.onCopyToNotation(window, value,chessBoard)
 
         if (button == '_make_popularity_move_') or (button == '_popularity_table_double_click_'):
             move=self.makePopularMove(window, value,chessBoard)
-        return move
+        return [move,pgn]
 
     # on close window exit thread
     def close(self) :

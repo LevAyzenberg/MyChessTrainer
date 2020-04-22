@@ -5,6 +5,7 @@ import os
 import keyboardKeys
 import configparser
 import threading
+import io
 #import cProfile
 
 SHOW_MOVES_FROM_CURRENT=8
@@ -454,6 +455,30 @@ class NotationTab :
     def getBoard(self) :
         with self.lock:
             return self.current_node.board()
+
+    ## inserts new branch into current node of current game
+    def insertBranch(self,node,new_node, comment):
+        if len(new_node.variations) == 0 :
+            node.comment=comment
+        for variation in new_node.variations :
+            if node.has_variation(variation.move) :
+                self.insertBranch(node.variation(variation.move),variation,comment)
+            else :
+                self.insertBranch(node.add_variation(variation.move),variation,comment)
+
+    ## copies given pgn to notation
+    def copyToNotation(self,pgn_text,window):
+        new_game=chess.pgn.read_game(io.StringIO(pgn_text))
+        headers=new_game.headers
+        print(headers)
+        comment=headers['Date'] + ': '+\
+                headers['White']+'('+headers['WhiteElo']+') - '+\
+                headers['Black']+'('+headers['BlackElo']+')'+\
+                ', ' + headers['Result']
+        with self.lock:
+            game=self.game
+        self.insertBranch(game,new_game,comment)
+        self.updateNotation(window)
 
     ## makes given move
     def makeMove(self, move, window):

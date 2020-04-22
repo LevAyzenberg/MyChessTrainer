@@ -1,11 +1,6 @@
-import chess
-import requests
 from html.parser import HTMLParser
 import unicodedata
 import re
-import http.client
-import urllib.parse
-from base64 import b64encode
 import requests
 
 import time
@@ -181,6 +176,22 @@ def getCache(fen) :
         else :
             return None
 
+def getPgn(gameUrl) :
+    for retry in range(0, config.getint('chess-db', 'retriesNumber')):
+        try:
+            a1 = time.time()
+            rgame = htmlSession.get(url=gameUrl)
+            a2 = time.time()
+            doc = lh.fromstring(rgame.text)
+            input_elements = doc.xpath('//input[@name=\'pgn\']')
+            if len(input_elements) == 0 :
+                print('PGN not found!!!')
+                return None
+            return input_elements[0].attrib['value']
+        except:
+            print('Failed!, reconnect and retry,', retry)
+            initFenCacheInternally()
+    return None
 
 #initFenCache('config.cfg')
 #fillFenCache('rnbqkbnr/pppppppp/8/8/8/P7/1PPPPPPP/RNBQKBNR b KQkq - 0 1')
