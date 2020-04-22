@@ -69,8 +69,8 @@ def engineInfoThread(engineThreadInfo, window) :
     # Change elements state
   
     while True :
-        print('engineInfoThread: Wait for board')
         chessBoard=engineThreadInfo.getBoard()
+
         if engineThreadInfo.checkStop() :
             print('engineInfoThread: exit')
             break
@@ -83,14 +83,13 @@ def engineInfoThread(engineThreadInfo, window) :
                 
                 # In case of new board exit current analisys.
                 if engineThreadInfo.checkNewBoard() :
-                    print('engineInfoThread: New board')
                     try :
                         window.FindElement('_analisys_table_').Update(values=[])
                         window.FindElement('_make_lines_move_').Update(disabled=True)
                     except:
                         print('engineInfoThread: FALED TO CLEAR ANALISYS TABLE!!!')
                     break
-                
+
                 if engineThreadInfo.checkStop() :
                     print('engineInfoThread: STOP')
                     break
@@ -135,8 +134,6 @@ def engineInfoThread(engineThreadInfo, window) :
                     except:
                         print('engineInfoThread: FALED TO UPDATE SCORE!!!')
     
-            print('engineInfoThread: Out of loop')
-
 
     engine.quit()
     print('engineInfoThread: EXIT\n')

@@ -1,0 +1,10 @@
+# Project exclude paths
+/build/
+/dist/
+/pgns/
+/pieces_backup/
+myChessTrainer.exe.spec
+myChessTrainer.spec
+/.idea/
+/__pycache__/
+/MyChessTrainerPublic/

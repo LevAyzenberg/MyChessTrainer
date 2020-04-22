@@ -402,7 +402,23 @@ class NotationTab :
         if filename != '' :
             try :
                 pgn=open(filename)
-                game=chess.pgn.read_game(pgn)
+
+                #sometimes it reads empty game and in this case we must continue to the next
+                game=None
+                while True:
+                    tmp_game=chess.pgn.read_game(pgn)
+                    if tmp_game != None :
+                        game=tmp_game
+                        if len(game.variations) > 0 :
+                            break
+                    else :
+                        break
+
+                if game== None:
+                    print('Pgn file is empty')
+                    sg.PopupError('Pgn file is empty')
+                    return
+
                 filename=filename
                 otherGamesInPgn=[]
                 while True:

@@ -2,6 +2,7 @@ import PySimpleGUI as sg
 import chess
 import listboxPopup
 import winsound
+import threading
 #import cProfile
 
 from engineTab import EngineTab
@@ -9,11 +10,41 @@ from popularityTab import PopularityTab
 from notationTab import NotationTab
 from chessBoardUI import ChessBoardUI
 
-
+MAX_READ_EVENTS=10
 CONFIG_FILE ='config.cfg'
 
 promotion_options=['Queen','Rook','Bishop','Knight']
 promotion_map = { 'Queen' : chess.QUEEN, 'Rook' : chess.ROOK, 'Bishop' : chess.BISHOP, 'Knight' : chess.KNIGHT }
+
+# to avoid window not reponding we run separate thread for Reads...
+class WindowReadLoop :
+    def __init__(self, window) :
+        self.window=window
+        self.lock=threading.Lock()
+        self.semaphore=threading.Semaphore(value=0)
+        self.eventsList=[]
+
+    def readLoop(self) :
+        while True:
+            button,value=self.window.Read()
+
+            with self.lock:
+                if len(self.eventsList) < MAX_READ_EVENTS:
+                    self.eventsList.append([button,value])
+                    self.semaphore.release()
+
+            # it is not very ellegant but most effective way to stop
+            if button == 'Exit' or button == None:
+                break
+
+
+
+    def getEvent(self):
+        self.semaphore.acquire()
+        with self.lock:
+            if len(self.eventsList) > 0 :
+                return self.eventsList.pop(0)
+        return None
 
 ## Checks move legality and makes it
 def makeMove(chessBoard, window, move, engineTab, popularityTab,notationTab) :
@@ -23,11 +54,6 @@ def makeMove(chessBoard, window, move, engineTab, popularityTab,notationTab) :
         chessBoard= notationTab.getBoard()
 
         # update others
-        window.FindElement("_popularity_table_").Update(values=[[]])
-        window.FindElement("_analisys_table_").Update(values=[[]])
-        window.FindElement("_games_table_").Update(values=[[]])
-        window.FindElement('_make_popularity_move_').Update(disabled=True)
-        window.FindElement('_goto_game_').Update(disabled=True)
         engineTab.setBoard(chessBoard,window)
         popularityTab.setBoard(chessBoard,window)
 
@@ -47,6 +73,78 @@ def detectPromotion(move,chessBoard) :
             promotion_piece=listboxPopup.showListBoxPopup(promotion_options,'Promotion')
             move.promotion=promotion_map[promotion_piece]
     return move
+
+def evaluateEvents(window, windowReadLoop, notationTab,engineTab,popularityTab,chessBoardUI,chess_board) :
+    while True:
+        element=windowReadLoop.getEvent()
+        if element == None:
+            continue
+        button=element[0]
+        value=element[1]
+        # prof=cProfile.Profile()
+        # prof.enable()
+        # window.FindElement('_error_message_').Update(value='')
+
+        if button == 'Exit':
+            window.Close()
+            break
+
+        if button == None:
+            break
+
+        # Menu and buttons evaluation
+
+        if button == 'New':
+            notationTab.newGame(window)
+            chess_board = notationTab.getBoard()
+            engineTab.setBoard(chess_board, window)
+            popularityTab.setBoard(chess_board, window)
+            chessBoardUI.clearSquare()
+
+        if button == 'Open':
+            notationTab.openGame(window)
+            chess_board = notationTab.getBoard()
+            engineTab.setBoard(chess_board, window)
+            popularityTab.setBoard(chess_board, window)
+            chessBoardUI.clearSquare()
+
+        if button == 'Save':
+            notationTab.saveGame()
+
+        if button == 'Save As':
+            notationTab.saveGameAs()
+
+        # check events in engine tab class
+        move = engineTab.onEvent(window, button, value, chess_board)
+        if move != None:
+            chess_board = makeMove(chess_board, window, move, engineTab, popularityTab, notationTab)
+            chessBoardUI.clearSquare()
+
+        # check events in popularity tab class
+        move = popularityTab.onEvent(window, button, value, chess_board)
+        if move != None:
+            chess_board = makeMove(chess_board, window, move, engineTab, popularityTab, notationTab)
+            chessBoardUI.clearSquare()
+
+        # check events in notation tab class
+        if notationTab.onEvent(window, button, value):
+            chess_board = notationTab.getBoard()
+            engineTab.setBoard(chess_board, window)
+            popularityTab.setBoard(chess_board, window)
+            chessBoardUI.clearSquare()
+
+        # Move
+        move = chessBoardUI.onEvent(window, button, value, chess_board)
+        if move != None:
+            move = detectPromotion(move, chess_board)
+            chess_board = makeMove(chess_board, window, move, engineTab, popularityTab, notationTab)
+
+        # redraw board and notation
+        chessBoardUI.redrawBoard(window, chess_board)
+        # prof.disable()
+        # prof.dump_stats("readLoop_profile")
+    print('EvaluateEvents thread exit')
+
 
 def playGame():
     menu_def = [['&File', ['&New', '&Open','&Save','Save &As','E&xit' ]],['&Board',['&Flip']]]
@@ -79,72 +177,21 @@ def playGame():
     # ---===--- Loop taking in user input --- #
     i = 0
 
-    while True:
-        button, value = window.Read()
-        #prof=cProfile.Profile()
-        #prof.enable()
-        #window.FindElement('_error_message_').Update(value='')
+    windowReadLoop= WindowReadLoop(window)
+    # Start evaluation in different thread
+    threadObject = threading.Thread(target=evaluateEvents, args=[window,
+                                                                 windowReadLoop,
+                                                                 notationTab,
+                                                                 engineTab,
+                                                                 popularityTab,
+                                                                 chessBoardUI,
+                                                                 chess_board])
+    threadObject.start()
 
-        if button == 'Exit':
-            window.Close()
-            break
+    # read events in main thread
+    windowReadLoop.readLoop()
+    threadObject.join()
 
-        if button == None :
-            break
-
-        # Menu and buttons evaluation
-
-
-        if button == 'New':
-            notationTab.newGame(window)
-            chess_board=notationTab.getBoard()
-            engineTab.setBoard(chess_board,window)
-            popularityTab.setBoard(chess_board,window)
-            chessBoardUI.clearSquare()
-
-        if button == 'Open':
-            notationTab.openGame(window)
-            chess_board=notationTab.getBoard()
-            engineTab.setBoard(chess_board,window)
-            popularityTab.setBoard(chess_board,window)
-            chessBoardUI.clearSquare()
-
-        if button == 'Save':
-            notationTab.saveGame()
-
-        if button == 'Save As':
-            notationTab.saveGameAs()
-            
-         # check events in engine tab class
-        move=engineTab.onEvent(window, button, value, chess_board)
-        if move != None:
-            chess_board=makeMove(chess_board,window,move,engineTab,popularityTab,notationTab)
-            chessBoardUI.clearSquare()
-
-        # check events in popularity tab class
-        move= popularityTab.onEvent(window, button, value, chess_board)
-        if move != None:
-            chess_board=makeMove(chess_board,window,move,engineTab,popularityTab,notationTab)
-            chessBoardUI.clearSquare()
-
-        # check events in notation tab class
-        if notationTab.onEvent(window, button, value) :
-            chess_board = notationTab.getBoard()
-            engineTab.setBoard(chess_board,window)
-            popularityTab.setBoard(chess_board,window)
-            chessBoardUI.clearSquare()
-       
-        # Move
-        move=chessBoardUI.onEvent(window, button, value, chess_board)
-        if move != None:
-            move=detectPromotion(move,chess_board)
-            chess_board=makeMove(chess_board,window,move,engineTab,popularityTab,notationTab)
-                    
-    
-        # redraw board and notation
-        chessBoardUI.redrawBoard(window, chess_board)
-        #prof.disable()
-        #prof.dump_stats("readLoop_profile")
     engineTab.close()
     popularityTab.close()
     chessBoardUI.stopUI()
@@ -153,3 +200,6 @@ def playGame():
     print("EXIT\n")
    
 playGame()
+
+
+

@@ -96,21 +96,25 @@ class ChessBoardUI :
 
             ## Render board
             board = self.chessBoardToUI(chessBoard,flipped)
-            for i in range(8):
-                for j in range(8):
-                    color = '#B58863' if (i + j) % 2 else '#F0D9B5'
+            try:
+                for i in range(8):
+                    for j in range(8):
+                        color = '#B58863' if (i + j) % 2 else '#F0D9B5'
 
-                    piece_image = self.images[tuple(board[i][j])]
-                    elem = window.FindElement(key=(i, j))
-                    elem.Update(button_color=('white', color), image_filename=piece_image)
+                        piece_image = self.images[tuple(board[i][j])]
+                        elem = window.FindElement(key=(i, j))
+                        elem.Update(button_color=('white', color), image_filename=piece_image)
 
-                    if (chess_board_square1 != None) and (self.fromGuiToChess([i, j]) == chess_board_square1):
-                        elem.Widget.config(relief='sunken')
-                    else:
-                        elem.Widget.config(relief='raised')
+                        if (chess_board_square1 != None) and (self.fromGuiToChess([i, j],flipped) == chess_board_square1):
+                            elem.Widget.config(relief='sunken')
+                        else:
+                            elem.Widget.config(relief='raised')
 
-            with self.lock:
-                self.drawnTimestamp=timeStamp
+                with self.lock:
+                    self.drawnTimestamp = timeStamp
+            except:
+                print('Error while update')
+                self.semaphore.release()
 
         print('UI thread stoped')
 
