@@ -470,7 +470,6 @@ class NotationTab :
     def copyToNotation(self,pgn_text,window):
         new_game=chess.pgn.read_game(io.StringIO(pgn_text))
         headers=new_game.headers
-        print(headers)
         comment=headers['Date'] + ': '+\
                 headers['White']+'('+headers['WhiteElo']+') - '+\
                 headers['Black']+'('+headers['BlackElo']+')'+\
