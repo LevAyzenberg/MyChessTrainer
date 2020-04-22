@@ -173,7 +173,9 @@ class PopularityTab :
                                           [sg.Table([['','','','','']],headings=['#','Move','#Games','Depth', 'Eval'], key='_popularity_table_', justification='center',auto_size_columns=False,col_widths=[3,8,9,5,4],num_rows=10)]])]])
 
         self.gamesTab = sg.TabGroup([[sg.Tab('Games',[[sg.Text('')],
-                                     [sg.RButton('Show Games', key= '_show_games_',disabled=True),sg.RButton('Go to Game',disabled=True,key="_goto_game_")],
+                                     [sg.RButton('Show Games', key= '_show_games_',disabled=True),
+                                      sg.RButton('Go to Game',disabled=True,key="_goto_game_"),
+                                      sg.RButton('Copy to notation',disabled=True,key="_copy_to_notation_"),],
                                      [sg.Table([['','','','','','']],
                                                headings=['Year','White Name','ELO\nWhite','Black Name','ELO\nBlack','Result'],
                                                key='_games_table_',
@@ -199,6 +201,7 @@ class PopularityTab :
             window.FindElement('_show_games_').Update(disabled=True)
             window.FindElement('_games_table_').Update(values=[[]])
             window.FindElement('_goto_game_').Update(disabled=True)
+            window.FindElement('_copy_to_notation_').Update(disabled=True)
             window.FindElement('_current_popularity_').Update(value='')
         except:
             pass
@@ -216,7 +219,9 @@ class PopularityTab :
             window.FindElement('_games_table_').Update(cacheElement['games'][0])
             if len(cacheElement['games'][0]) > 0 :
                 window.FindElement('_goto_game_').Update(disabled=False)
+                window.FindElement('_copy_to_notation_').Update(disabled=False)
             else :
+                window.FindElement('_copy_to_notation_').Update(disabled=True)
                 window.FindElement('_goto_game_').Update(disabled=True)
         else :
             print('onShowGames: Cache for fen=', chessBoard.fen(), ' is not present')
@@ -233,6 +238,20 @@ class PopularityTab :
             #    window.FindElement('_error_message_').Update(value='Choose game')
         else :
             print('onGotoGame: Cache for fen=', chessBoard.fen(), ' is not present')
+
+    def onCopyToNotation(self,window,window_values,chessBoard):
+        cacheElement=fenCache.getCache(chessBoard.fen())
+        if cacheElement != None:
+            if len(window_values['_games_table_']) > 0:
+                index = window_values['_games_table_'][0]
+                href=cacheElement['games'][1][index]
+                print(href)
+            #else :
+            #    window.FindElement('_error_message_').Update(value='Choose game')
+        else :
+            print('onCopyToNotation: Cache for fen=', chessBoard.fen(), ' is not present')
+
+
 
     # on show popularity button
     def onPopularity(self,window,chessBoard) :
@@ -275,7 +294,10 @@ class PopularityTab :
 
         if button == '_popularity_':
             self.onPopularity(window,chessBoard)
-            
+
+        if button == '_copy_to_notation_':
+            self.onCopyToNotation(window, value,chessBoard)
+
         if (button == '_make_popularity_move_') or (button == '_popularity_table_double_click_'):
             move=self.makePopularMove(window, value,chessBoard)
         return move
