@@ -456,8 +456,27 @@ class NotationTab :
         with self.lock:
             return self.current_node.board()
 
+    ## findFen.
+    def findFen(self,new_node,fen):
+        currentBoard= new_node.board()
+
+        while True :
+            if currentBoard.fen().split('-')[0] == fen :
+                return new_node
+            if len(new_node.variations) != 1 :
+                break
+            currentBoard.push(new_node.variations[0].move)
+            new_node=new_node.variations[0]
+
+        # if it no moves return None, overwise run recursion
+        for variation in new_node.variations :
+            tmp=self.findFen(variation,fen)
+            if tmp != None :
+                return tmp
+        return None
+
     ## inserts new branch into current node of current game
-    def insertBranch(self,node,new_node, comment):
+    def insertBranch(self,node, new_node, comment):
         if len(new_node.variations) == 0 :
             node.comment=comment
         for variation in new_node.variations :
@@ -476,7 +495,14 @@ class NotationTab :
                 ', ' + headers['Result']
         with self.lock:
             game=self.game
-        self.insertBranch(game,new_game,comment)
+            current_node = self.current_node
+
+        fen=current_node.board().fen().split('-')[0]
+        new_current_node=self.findFen(new_game,fen)
+        if new_current_node == None :
+            print('Unable to find "copy to notation" position')
+            return
+        self.insertBranch(current_node,new_current_node,comment)
         self.updateNotation(window)
 
     ## makes given move

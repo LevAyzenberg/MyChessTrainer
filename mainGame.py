@@ -123,7 +123,7 @@ def evaluateEvents(window, windowReadLoop, notationTab,engineTab,popularityTab,c
         # check events in popularity tab class
         move_pgn = popularityTab.onEvent(window, button, value, chess_board)
         if move_pgn[0] != None:
-            chess_board = makeMove(chess_board, window, move, engineTab, popularityTab, notationTab)
+            chess_board = makeMove(chess_board, window, move_pgn[0], engineTab, popularityTab, notationTab)
             chessBoardUI.clearSquare()
         if move_pgn[1] != None:
             notationTab.copyToNotation(move_pgn[1],window)
