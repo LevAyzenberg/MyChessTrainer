@@ -78,7 +78,7 @@ def engineInfoThread(engineThreadInfo, window) :
         current_multipv_seldepth=0
         multipv_dict={}
         
-        with engine.analysis(chessBoard, multipv=10) as analysis:
+        with engine.analysis(chessBoard, multipv=10,options={'Contempt':0}) as analysis:
             for info in analysis:
                 
                 # In case of new board exit current analisys.
