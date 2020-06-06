@@ -80,7 +80,7 @@ def engineInfoThread(engineThreadInfo, window) :
         
         with engine.analysis(chessBoard, multipv=10,options={'Contempt':0}) as analysis:
             for info in analysis:
-                
+
                 # In case of new board exit current analisys.
                 if engineThreadInfo.checkNewBoard() :
                     try :
@@ -124,7 +124,7 @@ def engineInfoThread(engineThreadInfo, window) :
                                     window.FindElement('_analisys_table_').Update(values=multipv_table)
                                 except:
                                     print('engineInfoThread: FALED TO UPDATE ANALISYS TABLE!!!')
-                           
+
                 # update score and depth
                 if info.get('multipv') == 1:
                     score=calcScore(info.get("score", 0))
@@ -133,7 +133,7 @@ def engineInfoThread(engineThreadInfo, window) :
                         window.FindElement('_current_computer_score_').Update(value=score)
                     except:
                         print('engineInfoThread: FALED TO UPDATE SCORE!!!')
-    
+
 
     engine.quit()
     print('engineInfoThread: EXIT\n')
